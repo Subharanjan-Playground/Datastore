@@ -1,0 +1,57 @@
+name: Build Docker & Trivy Scan
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build_and_scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---- If using Maven ----
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build Java Application (Maven)
+        run: mvn clean package -DskipTests
+
+      # ---- Docker Login (optional for private registry) ----
+      # - name: Docker login
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:latest .
+
+      # ---- Install Trivy ----
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb / | sudo tee -a /etc/apt/sources.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Run Trivy Scan
+        run: |
+          trivy image --exit-code 0 --format table -o trivy-report.txt myapp:latest
+          trivy image --exit-code 1 myapp:latest
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
