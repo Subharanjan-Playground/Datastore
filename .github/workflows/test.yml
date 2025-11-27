@@ -33,6 +33,8 @@ jobs:
           wget https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
           chmod +x install.sh
           sudo ./install.sh
+          sudo mv ./bin/trivy /usr/local/bin/trivy
+          trivy --version
 
       - name: Run Trivy Scan
         run: |
